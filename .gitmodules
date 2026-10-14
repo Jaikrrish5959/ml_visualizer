@@ -1,0 +1,3 @@
+[submodule "ML-capstone"]
+	path = ML-capstone
+	url = https://github.com/AniruthKarthik/ML-capstone.git
