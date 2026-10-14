@@ -413,7 +413,7 @@ for name, pipe in reg_trained.items():
     reg_results[name] = {"R2": round(float(m["R2 Score"]), 4),
                          "RMSE": round(float(m["RMSE"]), 4),
                          "MAE": round(float(m["MAE"]), 4)}
-    joblib.dump(pipe, os.path.join(MODELS_DIR, f"reg_{name.replace(' ', '_')}.pkl"))
+    joblib.dump(pipe, os.path.join(MODELS_DIR, f"reg_{name.replace(' ', '_')}.pkl"), compress=3)
     print(f"  {name:<28} R²={reg_results[name]['R2']:.4f}  RMSE={reg_results[name]['RMSE']:.2f}  MAE={reg_results[name]['MAE']:.2f}")
 
 save_json(reg_results, "reg_results.json")

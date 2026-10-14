@@ -1,0 +1,52 @@
+{
+  "Linear Regression": {
+    "R2": 0.7432,
+    "RMSE": 90.7581,
+    "MAE": 68.7833
+  },
+  "Ridge": {
+    "R2": 0.7432,
+    "RMSE": 90.7578,
+    "MAE": 68.7768
+  },
+  "Lasso": {
+    "R2": 0.7432,
+    "RMSE": 90.7583,
+    "MAE": 68.781
+  },
+  "ElasticNet": {
+    "R2": 0.7432,
+    "RMSE": 90.761,
+    "MAE": 68.765
+  },
+  "Polynomial Regression": {
+    "R2": 0.7481,
+    "RMSE": 89.8896,
+    "MAE": 68.4069
+  },
+  "Decision Tree Regressor": {
+    "R2": 0.804,
+    "RMSE": 79.2848,
+    "MAE": 48.5575
+  },
+  "Random Forest Regressor": {
+    "R2": 0.9097,
+    "RMSE": 53.8076,
+    "MAE": 33.8242
+  },
+  "Gradient Boosting Regressor": {
+    "R2": 0.9282,
+    "RMSE": 47.9885,
+    "MAE": 31.4312
+  },
+  "SVR": {
+    "R2": 0.7193,
+    "RMSE": 94.8898,
+    "MAE": 66.2254
+  },
+  "KNN Regressor": {
+    "R2": 0.6136,
+    "RMSE": 111.3198,
+    "MAE": 75.4395
+  }
+}

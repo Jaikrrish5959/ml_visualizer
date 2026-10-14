@@ -1,0 +1,19 @@
+{
+  "season": 3.0,
+  "yr": 1.0,
+  "mnth": 7.0,
+  "hr": 12.0,
+  "holiday": 0.0,
+  "weekday": 3.0,
+  "workingday": 1.0,
+  "weathersit": 1.0,
+  "temp": 0.5,
+  "atemp": 0.4848,
+  "hum": 0.63,
+  "windspeed": 0.194,
+  "day": 16.0,
+  "day_of_week": 3.0,
+  "rush_hour": 0.0,
+  "temp_hum_interaction": 0.3,
+  "is_weekend": 0.0
+}

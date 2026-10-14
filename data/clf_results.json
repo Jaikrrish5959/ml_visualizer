@@ -1,0 +1,72 @@
+{
+  "Logistic Regression": {
+    "Accuracy": 0.8862,
+    "Precision": 0.8741,
+    "Recall": 0.8862,
+    "F1": 0.8749,
+    "ROC_AUC": 0.8945
+  },
+  "KNN": {
+    "Accuracy": 0.8795,
+    "Precision": 0.8645,
+    "Recall": 0.8795,
+    "F1": 0.863,
+    "ROC_AUC": 0.7932
+  },
+  "Naive Bayes": {
+    "Accuracy": 0.8125,
+    "Precision": 0.8375,
+    "Recall": 0.8125,
+    "F1": 0.8229,
+    "ROC_AUC": 0.7991
+  },
+  "Decision Tree": {
+    "Accuracy": 0.8638,
+    "Precision": 0.8447,
+    "Recall": 0.8638,
+    "F1": 0.849,
+    "ROC_AUC": 0.8174
+  },
+  "SVM (SVC)": {
+    "Accuracy": 0.8839,
+    "Precision": 0.8756,
+    "Recall": 0.8839,
+    "F1": 0.8605,
+    "ROC_AUC": 0.8813
+  },
+  "Random Forest": {
+    "Accuracy": 0.8884,
+    "Precision": 0.8785,
+    "Recall": 0.8884,
+    "F1": 0.8704,
+    "ROC_AUC": 0.8787
+  },
+  "AdaBoost": {
+    "Accuracy": 0.8795,
+    "Precision": 0.8649,
+    "Recall": 0.8795,
+    "F1": 0.8657,
+    "ROC_AUC": 0.8836
+  },
+  "Gradient Boosting": {
+    "Accuracy": 0.8973,
+    "Precision": 0.889,
+    "Recall": 0.8973,
+    "F1": 0.8845,
+    "ROC_AUC": 0.8923
+  },
+  "Bagging": {
+    "Accuracy": 0.8996,
+    "Precision": 0.8935,
+    "Recall": 0.8996,
+    "F1": 0.8852,
+    "ROC_AUC": 0.879
+  },
+  "MLP (Neural Network)": {
+    "Accuracy": 0.8906,
+    "Precision": 0.8824,
+    "Recall": 0.8906,
+    "F1": 0.8848,
+    "ROC_AUC": 0.8801
+  }
+}

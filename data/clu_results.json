@@ -1,0 +1,12 @@
+{
+  "K-Means": {
+    "Silhouette": 0.2471,
+    "Davies_Bouldin": 1.9232,
+    "Calinski_Harabasz": 533.7608
+  },
+  "Agglomerative Hierarchical": {
+    "Silhouette": 0.1822,
+    "Davies_Bouldin": 1.9366,
+    "Calinski_Harabasz": 431.8457
+  }
+}
