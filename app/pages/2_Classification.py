@@ -125,6 +125,7 @@ elif section == "📊 Results":
     clf_res = json.load(open(os.path.join(DATA_DIR, "clf_results.json")))
     df = pd.DataFrame(clf_res).T.reset_index().rename(columns={"index": "Algorithm"})
     df = df.sort_values("F1", ascending=False).reset_index(drop=True)
+    df.insert(0, "Rank", range(1, len(df) + 1))
 
     best = df.iloc[0]
     m1, m2, m3, m4, m5 = st.columns(5)
@@ -134,21 +135,48 @@ elif section == "📊 Results":
     m4.metric("Recall",    f"{best['Recall']:.4f}")
     m5.metric("Weighted F1", f"{best['F1']:.4f}")
 
+    def _sync_from_table():
+        rows = st.session_state["clf_results_table"]["selection"]["rows"]
+        if rows:
+            st.session_state["clf_detail_model"] = df.iloc[rows[0]]["Algorithm"]
+
     st.divider()
+    st.markdown("👆 **Tick the checkbox at the left of a row** (it appears when you hover) "
+                "or pick a model from the dropdown below to see its confusion matrix and ROC curve.")
     st.dataframe(
         df.style.background_gradient(subset=["F1"], cmap="Oranges")
-                .format({c: "{:.4f}" for c in df.columns if c != "Algorithm"}, na_rep="—"),
-        use_container_width=True, height=420,
+                .format({c: "{:.4f}" for c in df.columns if c not in ("Algorithm", "Rank")}, na_rep="—"),
+        use_container_width=True, height=420, hide_index=True,
+        on_select=_sync_from_table, selection_mode="single-row", key="clf_results_table",
     )
     st.caption("Ranked by weighted F1 (primary metric for the 85:15 class imbalance). "
                "Precision / Recall / F1 are weighted averages across both classes.")
 
-    # Confusion matrix + ROC for best model
-    best_name = best["Algorithm"]
-    pipe = get_clf_model(best_name)
+    sel_name = st.selectbox(
+        "🔎 Show details for", df["Algorithm"].tolist(), key="clf_detail_model",
+        format_func=lambda n: f"#{df.index[df['Algorithm'] == n][0] + 1}  {n}",
+    )
+    sel = df[df["Algorithm"] == sel_name].iloc[0]
+
+    # ── Details for the selected model ────────────────────────────────────────
+    st.divider()
+    st.subheader(f"🔎 {sel_name}" + ("  ·  🥇 best model" if sel_name == best["Algorithm"] else f"  ·  rank #{sel['Rank']}"))
+    d1, d2, d3, d4, d5 = st.columns(5)
+    d1.metric("Accuracy",    f"{sel['Accuracy']:.4f}",  f"{sel['Accuracy'] - best['Accuracy']:+.4f} vs best")
+    d2.metric("Precision",   f"{sel['Precision']:.4f}", f"{sel['Precision'] - best['Precision']:+.4f} vs best")
+    d3.metric("Recall",      f"{sel['Recall']:.4f}",    f"{sel['Recall'] - best['Recall']:+.4f} vs best")
+    d4.metric("Weighted F1", f"{sel['F1']:.4f}",        f"{sel['F1'] - best['F1']:+.4f} vs best")
+    d5.metric("ROC-AUC",     f"{sel['ROC_AUC']:.4f}",   f"{sel['ROC_AUC'] - best['ROC_AUC']:+.4f} vs best")
+
     X_te = pd.read_pickle(os.path.join(DATA_DIR, "X_clf_test.pkl"))
     y_te = np.load(os.path.join(DATA_DIR, "y_clf_test.npy"))
-    preds = pipe.predict(X_te)
+
+    @st.cache_data
+    def clf_test_outputs(name):
+        pipe = get_clf_model(name)
+        return pipe.predict(X_te), pipe.predict_proba(X_te)[:, 1]
+
+    preds, y_prob = clf_test_outputs(sel_name)
     cm = confusion_matrix(y_te, preds)
 
     c1, c2 = st.columns(2)
@@ -166,7 +194,7 @@ elif section == "📊 Results":
             text=hover, hoverinfo="text",
             colorscale="Blues", showscale=False,
         ))
-        fig.update_layout(title=f"Confusion Matrix — {best_name}", height=380)
+        fig.update_layout(title=f"Confusion Matrix — {sel_name}", height=380)
         for i in range(2):
             for j in range(2):
                 fig.add_annotation(x=j, y=i, text=str(z[i][j]),
@@ -174,21 +202,29 @@ elif section == "📊 Results":
         st.plotly_chart(fig, use_container_width=True)
 
     with c2:
-        y_prob = pipe.predict_proba(X_te)[:, 1]
         fpr, tpr, _ = roc_curve(y_te, y_prob)
         roc_auc = auc(fpr, tpr)
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines", name=f"AUC = {roc_auc:.3f}",
+        if sel_name != best["Algorithm"]:
+            _, best_prob = clf_test_outputs(best["Algorithm"])
+            bfpr, btpr, _ = roc_curve(y_te, best_prob)
+            fig2.add_trace(go.Scatter(x=bfpr, y=btpr, mode="lines",
+                                       name=f"{best['Algorithm']} (best) AUC = {auc(bfpr, btpr):.3f}",
+                                       line=dict(color=BLUE, width=2, dash="dot"), opacity=0.6))
+        fig2.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines", name=f"{sel_name} AUC = {roc_auc:.3f}",
                                    line=dict(color=ORANGE, width=3)))
         fig2.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines",
                                    line=dict(color="gray", dash="dash"), name="random"))
-        fig2.update_layout(title=f"ROC Curve — {best_name}", xaxis_title="False Positive Rate",
-                            yaxis_title="True Positive Rate", height=380)
+        fig2.update_layout(title=f"ROC Curve — {sel_name}", xaxis_title="False Positive Rate",
+                            yaxis_title="True Positive Rate", height=380,
+                            legend=dict(x=0.35, y=0.05))
         st.plotly_chart(fig2, use_container_width=True)
 
+    tn, fp, fn, tp = cm.ravel()
     st.caption(
-        "AUC (Area Under the Curve): closer to 1.0 = better. "
-        "0.5 = random guessing. The confusion matrix shows how many predictions were right/wrong per class."
+        f"On the {len(y_te)} test customers, {sel_name} correctly caught **{tp}** of {tp + fn} responders "
+        f"and raised **{fp}** false alarms. "
+        "AUC (Area Under the Curve): closer to 1.0 = better, 0.5 = random guessing."
     )
 
 # ════════════════════════════════════════════════════════════════════════════

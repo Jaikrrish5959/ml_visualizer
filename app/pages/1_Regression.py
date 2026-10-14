@@ -104,6 +104,7 @@ elif section == "📊 Results":
     reg_res = json.load(open(os.path.join(DATA_DIR, "reg_results.json")))
     df = pd.DataFrame(reg_res).T.reset_index().rename(columns={"index": "Algorithm"})
     df = df.sort_values("R2", ascending=False).reset_index(drop=True)
+    df.insert(0, "Rank", range(1, len(df) + 1))
 
     # Metric cards for best model
     best = df.iloc[0]
@@ -113,24 +114,48 @@ elif section == "📊 Results":
     m3.metric("RMSE", f"{best['RMSE']:.2f}")
     m4.metric("MAE",  f"{best['MAE']:.2f}")
 
+    def _sync_from_table():
+        rows = st.session_state["reg_results_table"]["selection"]["rows"]
+        if rows:
+            st.session_state["reg_detail_model"] = df.iloc[rows[0]]["Algorithm"]
+
     st.divider()
+    st.markdown("👆 **Tick the checkbox at the left of a row** (it appears when you hover) "
+                "or pick a model from the dropdown below to see its predicted-vs-actual and residual plots.")
     st.dataframe(
         df.style.background_gradient(subset=["R2"], cmap="Blues")
                 .format({"R2": "{:.4f}", "RMSE": "{:.2f}", "MAE": "{:.2f}"}),
-        use_container_width=True, height=400,
+        use_container_width=True, height=400, hide_index=True,
+        on_select=_sync_from_table, selection_mode="single-row", key="reg_results_table",
     )
 
-    # Residual + predicted-vs-actual for best model
+    sel_name = st.selectbox(
+        "🔎 Show details for", df["Algorithm"].tolist(), key="reg_detail_model",
+        format_func=lambda n: f"#{df.index[df['Algorithm'] == n][0] + 1}  {n}",
+    )
+    sel = df[df["Algorithm"] == sel_name].iloc[0]
+
+    # ── Details for the selected model ────────────────────────────────────────
+    st.divider()
+    st.subheader(f"🔎 {sel_name}" + ("  ·  🥇 best model" if sel_name == best["Algorithm"] else f"  ·  rank #{sel['Rank']}"))
+    d1, d2, d3 = st.columns(3)
+    d1.metric("R²",   f"{sel['R2']:.4f}",   f"{sel['R2'] - best['R2']:+.4f} vs best")
+    d2.metric("RMSE", f"{sel['RMSE']:.2f}", f"{sel['RMSE'] - best['RMSE']:+.2f} vs best", delta_color="inverse")
+    d3.metric("MAE",  f"{sel['MAE']:.2f}",  f"{sel['MAE'] - best['MAE']:+.2f} vs best", delta_color="inverse")
+
     @st.cache_resource
     def get_reg_model(name):
         fname = f"reg_{name.replace(' ', '_')}.pkl"
         return joblib.load(os.path.join(MODELS_DIR, fname))
 
-    best_name = best["Algorithm"]
-    pipe = get_reg_model(best_name)
     X_te = pd.read_pickle(os.path.join(DATA_DIR, "X_reg_test.pkl"))
     y_te = np.load(os.path.join(DATA_DIR, "y_reg_test.npy"))
-    preds = pipe.predict(X_te)
+
+    @st.cache_data
+    def reg_test_predictions(name):
+        return get_reg_model(name).predict(X_te)
+
+    preds = reg_test_predictions(sel_name)
     residuals = y_te - preds
 
     c1, c2 = st.columns(2)
@@ -141,7 +166,7 @@ elif section == "📊 Results":
         mn, mx = y_te.min(), y_te.max()
         fig.add_trace(go.Scatter(x=[mn, mx], y=[mn, mx], mode="lines",
                                   line=dict(color=ORANGE, width=2, dash="dash"), name="perfect"))
-        fig.update_layout(title=f"Predicted vs Actual — {best_name}",
+        fig.update_layout(title=f"Predicted vs Actual — {sel_name}",
                            xaxis_title="Actual cnt", yaxis_title="Predicted cnt", height=420)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -150,7 +175,7 @@ elif section == "📊 Results":
         fig2.add_trace(go.Scatter(x=preds, y=residuals, mode="markers",
                                    marker=dict(color=ORANGE, opacity=0.4, size=5)))
         fig2.add_hline(y=0, line=dict(color="gray", dash="dash"))
-        fig2.update_layout(title=f"Residuals — {best_name}",
+        fig2.update_layout(title=f"Residuals — {sel_name}",
                             xaxis_title="Predicted", yaxis_title="Residual", height=420)
         st.plotly_chart(fig2, use_container_width=True)
 
