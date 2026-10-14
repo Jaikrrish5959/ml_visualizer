@@ -1,0 +1,18 @@
+work.md
+guidelines.pdf
+guide.pdf
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+
+# PowerPoint presentations
+*.pptx
+
+# LibreOffice lock files
+.~lock.*
+
+# Local guidelines & templates
+PHASE_2_GUIDELINES.md
+NOTEBOOK_TEMPLATES.md
+23CSE301_ML_26_27_Capstone_Guidelines.pdf
+
