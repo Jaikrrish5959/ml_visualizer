@@ -166,102 +166,40 @@ def evaluate_regression(model, X_train, y_train, X_test, y_test, model_name="Mod
 
 reg_trained = {}
 
-# --- Linear Regression ---
-print("  Training Linear Regression…")
-linear_regression_model = Pipeline(steps=[
-    ("preprocessor", preprocessor),
-    ("regressor", LinearRegression()),
+# --- Linear models: as in the notebook's final 10-model comparison table ---
+print("  Training Linear Regression, Ridge, Lasso, ElasticNet, Polynomial…")
+reg_trained["Linear Regression"] = Pipeline([
+    ('preprocessor', preprocessor),
+    ('regressor', LinearRegression())
 ])
-linear_regression_model.fit(X_train, y_train)
-reg_trained["Linear Regression"] = linear_regression_model
-
-# --- Ridge (GridSearchCV over alpha) ---
-print("  Tuning Ridge…")
-ridge_search = GridSearchCV(
-    estimator=Pipeline(steps=[("preprocessor", preprocessor), ("regressor", Ridge())]),
-    param_grid={"regressor__alpha": np.logspace(-3, 3, 25)},
-    scoring="neg_root_mean_squared_error",
-    cv=3,
-    n_jobs=1,
-)
-ridge_search.fit(X_train, y_train)
-reg_trained["Ridge"] = ridge_search.best_estimator_
-print(f"    Best Ridge alpha: {ridge_search.best_params_['regressor__alpha']:.4g}")
-
-# --- Lasso (GridSearchCV over alpha) ---
-print("  Tuning Lasso…")
-lasso_search = GridSearchCV(
-    estimator=Pipeline(steps=[
-        ("preprocessor", preprocessor),
-        ("regressor", Lasso(max_iter=20_000, random_state=RANDOM_STATE)),
-    ]),
-    param_grid={"regressor__alpha": np.logspace(-3, 2, 6)},
-    scoring="neg_root_mean_squared_error",
-    cv=3,
-    n_jobs=1,
-)
-lasso_search.fit(X_train, y_train)
-reg_trained["Lasso"] = lasso_search.best_estimator_
-print(f"    Best Lasso alpha: {lasso_search.best_params_['regressor__alpha']:.4g}")
-
-# --- ElasticNet (GridSearchCV over alpha, l1_ratio) ---
-print("  Tuning ElasticNet…")
-elastic_net_search = GridSearchCV(
-    estimator=Pipeline(steps=[
-        ("preprocessor", clone(preprocessor)),
-        ("regressor", ElasticNet(max_iter=20_000, random_state=RANDOM_STATE)),
-    ]),
-    param_grid={
-        "regressor__alpha": [0.001, 0.01, 0.1, 1.0],
-        "regressor__l1_ratio": [0.1, 0.5, 0.9],
-    },
-    scoring="neg_root_mean_squared_error",
-    cv=3,
-    n_jobs=1,
-)
-elastic_net_search.fit(X_train, y_train)
-reg_trained["ElasticNet"] = elastic_net_search.best_estimator_
-print(f"    Best ElasticNet parameters: {elastic_net_search.best_params_}")
-
-
-# --- Polynomial Regression (degree chosen on a validation split) ---
-def make_poly_prep(degree):
-    return ColumnTransformer(
+reg_trained["Ridge"] = Pipeline([
+    ('preprocessor', preprocessor),
+    ('regressor', Ridge(alpha=10.0, random_state=RANDOM_STATE))
+])
+reg_trained["Lasso"] = Pipeline([
+    ('preprocessor', preprocessor),
+    ('regressor', Lasso(alpha=0.05, random_state=RANDOM_STATE, max_iter=10000))
+])
+reg_trained["ElasticNet"] = Pipeline([
+    ('preprocessor', preprocessor),
+    ('regressor', ElasticNet(alpha=0.001, l1_ratio=0.9, random_state=RANDOM_STATE, max_iter=10000))
+])
+reg_trained["Polynomial Regression"] = Pipeline([
+    ('poly_preprocessor', ColumnTransformer(
         transformers=[
-            ("poly_num", Pipeline([
-                ("scaler", StandardScaler()),
-                ("poly", PolynomialFeatures(degree=degree, include_bias=False)),
+            ('poly_num', Pipeline([
+                ('scaler', StandardScaler()),
+                ('poly', PolynomialFeatures(degree=2, include_bias=False))
             ]), numerical_features),
-            ("cat", OneHotEncoder(drop="first", handle_unknown="ignore", sparse_output=False), categorical_features),
-            ("bin", "passthrough", binary_features),
+            ('cat', OneHotEncoder(drop='first', handle_unknown='ignore', sparse_output=False), categorical_features),
+            ('bin', 'passthrough', binary_features)
         ],
-        remainder="drop",
-    )
-
-
-print("  Selecting polynomial degree…")
-X_poly_train, X_poly_validation, y_poly_train, y_poly_validation = train_test_split(
-    X_train, y_train, test_size=0.20, random_state=RANDOM_STATE,
-)
-polynomial_degree_rows = []
-for degree in [1, 2]:
-    candidate_model = Pipeline(steps=[
-        ("preprocessor", make_poly_prep(degree)),
-        ("regressor", Ridge(alpha=1.0, random_state=RANDOM_STATE)),
-    ])
-    candidate_model.fit(X_poly_train, y_poly_train)
-    validation_metrics = regression_metrics(y_poly_validation, candidate_model.predict(X_poly_validation))
-    polynomial_degree_rows.append({"Degree": degree, **validation_metrics})
-polynomial_degree_results = pd.DataFrame(polynomial_degree_rows).sort_values("RMSE", ignore_index=True)
-best_polynomial_degree = int(polynomial_degree_results.loc[0, "Degree"])
-print(f"    Selected polynomial degree: {best_polynomial_degree}")
-
-polynomial_model = Pipeline(steps=[
-    ("preprocessor", make_poly_prep(best_polynomial_degree)),
-    ("regressor", Ridge(alpha=1.0, random_state=RANDOM_STATE)),
+        remainder='drop'
+    )),
+    ('regressor', LinearRegression())
 ])
-polynomial_model.fit(X_train, y_train)
-reg_trained["Polynomial Regression"] = polynomial_model
+for name in ["Linear Regression", "Ridge", "Lasso", "ElasticNet", "Polynomial Regression"]:
+    reg_trained[name].fit(X_train, y_train)
 
 # --- Decision Tree (max_depth sweep) ---
 print("  Sweeping Decision Tree max_depth…")
@@ -494,7 +432,9 @@ print(f"  X_train shape: {X_train_proc.shape} | X_test shape: {X_test_proc.shape
 # --- Part B: tuned models (GridSearchCV on the preprocessed training split) ---
 print("  Tuning AdaBoost…")
 grid_ada = GridSearchCV(
-    AdaBoostClassifier(random_state=RANDOM_STATE),
+    # algorithm='SAMME' is the default in scikit-learn >= 1.6, which the notebook ran on;
+    # 1.5.x defaults to SAMME.R and picks a different learning rate.
+    AdaBoostClassifier(algorithm='SAMME', random_state=RANDOM_STATE),
     param_grid={'n_estimators': [30, 50, 100], 'learning_rate': [0.1, 0.5, 1.0]},
     cv=5, scoring='f1_weighted', n_jobs=-1,
 )
